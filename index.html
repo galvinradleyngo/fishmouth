@@ -49,20 +49,70 @@
             max-width: 400px;
         }
         .hidden { display: none !important; }
+        #music-btn {
+            position: fixed;
+            top: env(safe-area-inset-top, 20px);
+            right: env(safe-area-inset-right, 20px);
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(0, 242, 255, 0.5);
+            color: #00f2ff;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        #music-btn:hover { background: rgba(0, 242, 255, 0.15); }
+        #play-btn {
+            margin-top: 1.5rem;
+            padding: 0.6rem 2.2rem;
+            background: #00f2ff;
+            color: #000b14;
+            border: none;
+            border-radius: 999px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: opacity 0.2s;
+        }
+        #play-btn:hover { opacity: 0.85; }
+        #instructions-list {
+            text-align: left;
+            margin: 1rem auto 0;
+            max-width: 300px;
+            font-size: 0.9rem;
+            opacity: 0.85;
+            line-height: 1.8;
+        }
     </style>
 </head>
 <body>
+
+    <button id="music-btn" title="Toggle Music">🎵</button>
 
     <div id="video-container">
         <video id="webcam" autoplay playsinline></video>
     </div>
 
     <div id="status-msg">
-        <h1 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 tracking-tight">Ocean Drifter</h1>
+        <h1 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 tracking-tight">🐟 Ocean Drifter</h1>
         <p id="instruction" class="text-sm md:text-lg opacity-80">Initializing Neural Tracker...</p>
         <div id="loading-bar" class="w-full bg-gray-700 h-1.5 mt-6 rounded-full overflow-hidden">
             <div id="loading-progress" class="bg-cyan-400 h-full w-0 transition-all duration-500"></div>
         </div>
+        <ul id="instructions-list" class="hidden">
+            <li>🐠 <strong>Lean head left/right</strong> to steer your fish</li>
+            <li>👄 <strong>Open your mouth</strong> to chomp nearby prey</li>
+            <li>🎵 Use the <strong>🎵 button</strong> (top-right) to toggle music</li>
+            <li>🏆 Eat as many fish as possible — beat your high score!</li>
+        </ul>
+        <button id="play-btn" class="hidden">Dive In! 🌊</button>
     </div>
 
     <div class="game-ui">
@@ -82,6 +132,9 @@
         const statusMsg = document.getElementById("status-msg");
         const instruction = document.getElementById("instruction");
         const progressBar = document.getElementById("loading-progress");
+        const playBtn = document.getElementById("play-btn");
+        const instructionsList = document.getElementById("instructions-list");
+        const musicBtn = document.getElementById("music-btn");
 
         let faceLandmarker;
         let lastVideoTime = -1;
@@ -89,12 +142,91 @@
         let gameActive = false;
         let baseScale = 1;
 
+        // ── Background Music ──────────────────────────────────────────────
+        let audioCtx = null;
+        let musicNodes = [];
+        let musicOn = false;
+
+        function buildMusic() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            const master = audioCtx.createGain();
+            master.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            master.connect(audioCtx.destination);
+            musicNodes.push(master);
+
+            // Deep bass drone
+            function addDrone(freq, gainVal) {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                g.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                osc.connect(g);
+                g.connect(master);
+                osc.start();
+                musicNodes.push(osc, g);
+            }
+            addDrone(55,  0.7);   // deep bass
+            addDrone(82,  0.35);  // fifth above
+            addDrone(110, 0.2);   // octave
+
+            // Slow LFO wobble on the bass
+            const lfo = audioCtx.createOscillator();
+            const lfoGain = audioCtx.createGain();
+            lfo.frequency.setValueAtTime(0.12, audioCtx.currentTime);
+            lfoGain.gain.setValueAtTime(4, audioCtx.currentTime);
+            lfo.connect(lfoGain);
+            lfoGain.connect(musicNodes[1].frequency); // modulate bass osc
+            lfo.start();
+            musicNodes.push(lfo, lfoGain);
+
+            // Gentle shimmer (high-freq filtered noise)
+            const bufSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+            const data = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = "bandpass";
+            filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+            filter.Q.setValueAtTime(0.4, audioCtx.currentTime);
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+            noiseSource.connect(filter);
+            filter.connect(noiseGain);
+            noiseGain.connect(master);
+            noiseSource.start();
+            musicNodes.push(noiseSource, filter, noiseGain);
+        }
+
+        function startMusic() {
+            buildMusic();
+            if (audioCtx.state === "suspended") audioCtx.resume();
+            musicOn = true;
+            musicBtn.textContent = "🎵";
+        }
+
+        function stopMusic() {
+            if (audioCtx) audioCtx.suspend();
+            musicOn = false;
+            musicBtn.textContent = "🔇";
+        }
+
+        musicBtn.addEventListener("click", () => {
+            if (musicOn) { stopMusic(); } else { startMusic(); }
+        });
+        // ─────────────────────────────────────────────────────────────────
+
         // Player configuration
         const player = { 
             x: 0, y: 0, 
             vx: 0, vy: 0, 
             speed: 1.25,      
-            size: 60, 
+            size: 90, 
             isChomping: false,
             chompLevel: 0, 
             angle: 0,
@@ -115,7 +247,7 @@
             
             // Calculate scale based on a reference width of 1000px
             baseScale = Math.max(0.5, Math.min(canvas.width / 1000, 1.2));
-            player.size = 60 * baseScale;
+            player.size = 90 * baseScale;
             player.speed = 1.25 * (baseScale * 1.5); // Adjust speed slightly for larger screens
 
             // If game hasn't started, center player
@@ -164,12 +296,22 @@
                 });
                 video.srcObject = stream;
                 video.addEventListener("loadeddata", () => {
-                    statusMsg.classList.add("hidden");
-                    gameActive = true;
-                    player.x = canvas.width / 2;
-                    player.y = canvas.height / 2;
-                    spawnFood();
-                    requestAnimationFrame(gameLoop);
+                    // Show instructions and Play button
+                    document.getElementById("loading-bar").classList.add("hidden");
+                    instruction.innerText = "How to Play:";
+                    instruction.classList.add("font-bold");
+                    instructionsList.classList.remove("hidden");
+                    playBtn.classList.remove("hidden");
+
+                    playBtn.addEventListener("click", () => {
+                        statusMsg.classList.add("hidden");
+                        gameActive = true;
+                        player.x = canvas.width / 2;
+                        player.y = canvas.height / 2;
+                        startMusic();
+                        spawnFood();
+                        requestAnimationFrame(gameLoop);
+                    }, { once: true });
                 });
             } catch (err) {
                 instruction.innerText = "Camera access denied.";
