@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mouth-Mover: Deep Sea Snack</title>
+    <title>Angry Beak: Bird Blast</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #000b14; font-family: sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; }
+        body { margin: 0; overflow: hidden; background: #4db8e8; font-family: 'Arial Rounded MT Bold', Arial, sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; }
         canvas { display: block; width: 100vw; height: 100vh; }
         #video-container {
             position: fixed;
@@ -15,12 +15,13 @@
             right: env(safe-area-inset-right, 20px);
             width: clamp(100px, 20vw, 160px);
             aspect-ratio: 4/3;
-            border: 2px solid rgba(0, 242, 255, 0.5);
+            border: 3px solid rgba(232, 160, 0, 0.9);
             border-radius: 12px;
             overflow: hidden;
             background: #000;
             z-index: 10;
             transform: scaleX(-1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.35);
         }
         #webcam { width: 100%; height: 100%; object-fit: cover; }
         .game-ui {
@@ -30,7 +31,7 @@
             color: white;
             pointer-events: none;
             z-index: 20;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 2px 2px 0 rgba(100, 30, 0, 0.8);
         }
         #status-msg {
             position: fixed;
@@ -38,57 +39,61 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            color: #00f2ff;
-            background: rgba(0,0,0,0.95);
+            color: #5c1a00;
+            background: rgba(255, 248, 220, 0.97);
             padding: clamp(1.5rem, 5vw, 2.5rem);
             border-radius: 24px;
-            border: 1px solid #00f2ff;
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+            border: 4px solid #e8a000;
+            box-shadow: 0 6px 0 #b07000, 0 8px 24px rgba(0,0,0,0.3);
             z-index: 100;
             width: 90%;
-            max-width: 400px;
+            max-width: 420px;
         }
         .hidden { display: none !important; }
         #music-btn {
             position: fixed;
             top: env(safe-area-inset-top, 20px);
             right: env(safe-area-inset-right, 20px);
-            background: rgba(0, 0, 0, 0.55);
-            border: 1px solid rgba(0, 242, 255, 0.5);
-            color: #00f2ff;
+            background: rgba(255, 200, 0, 0.92);
+            border: 2px solid #b07800;
+            color: #5c1a00;
             border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            font-size: 20px;
+            width: 48px;
+            height: 48px;
+            font-size: 22px;
             cursor: pointer;
             z-index: 30;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s;
+            transition: background 0.15s, transform 0.1s;
+            box-shadow: 0 3px 0 #b07800;
         }
-        #music-btn:hover { background: rgba(0, 242, 255, 0.15); }
+        #music-btn:hover { background: rgba(255, 220, 50, 0.95); transform: scale(1.08); }
         #play-btn {
             margin-top: 1.5rem;
-            padding: 0.6rem 2.2rem;
-            background: #00f2ff;
-            color: #000b14;
+            padding: 0.7rem 2.4rem;
+            background: #e8201e;
+            color: white;
             border: none;
             border-radius: 999px;
-            font-size: 1.1rem;
-            font-weight: 700;
+            font-size: 1.15rem;
+            font-weight: 800;
             cursor: pointer;
-            letter-spacing: 0.05em;
-            transition: opacity 0.2s;
+            letter-spacing: 0.06em;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 5px 0 #9a0e0c;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
-        #play-btn:hover { opacity: 0.85; }
+        #play-btn:hover { transform: translateY(2px); box-shadow: 0 3px 0 #9a0e0c; }
         #instructions-list {
             text-align: left;
             margin: 1rem auto 0;
             max-width: 300px;
             font-size: 0.9rem;
-            opacity: 0.85;
-            line-height: 1.8;
+            opacity: 0.9;
+            line-height: 1.9;
+            color: #3a1000;
         }
     </style>
 </head>
@@ -101,23 +106,23 @@
     </div>
 
     <div id="status-msg">
-        <h1 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 tracking-tight">🐟 Ocean Drifter</h1>
-        <p id="instruction" class="text-sm md:text-lg opacity-80">Initializing Neural Tracker...</p>
-        <div id="loading-bar" class="w-full bg-gray-700 h-1.5 mt-6 rounded-full overflow-hidden">
-            <div id="loading-progress" class="bg-cyan-400 h-full w-0 transition-all duration-500"></div>
+        <h1 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 tracking-tight" style="color:#e8201e; text-shadow:2px 2px 0 #9a0e0c;">🐦 Angry Beak</h1>
+        <p id="instruction" class="text-sm md:text-lg" style="color:#5c1a00;">Initializing Face Tracker...</p>
+        <div id="loading-bar" class="w-full bg-yellow-200 h-2 mt-6 rounded-full overflow-hidden" style="border:1px solid #b07800;">
+            <div id="loading-progress" class="h-full w-0 transition-all duration-500" style="background:#e8201e;"></div>
         </div>
         <ul id="instructions-list" class="hidden">
-            <li>🐠 <strong>Lean head left/right</strong> to steer your fish</li>
-            <li>👄 <strong>Open your mouth</strong> to chomp nearby prey</li>
+            <li>🐦 <strong>Tilt your head</strong> to steer your bird</li>
+            <li>👄 <strong>Open your mouth</strong> to launch and eat pigs!</li>
             <li>🎵 Use the <strong>🎵 button</strong> (top-right) to toggle music</li>
-            <li>🏆 Eat as many fish as possible — beat your high score!</li>
+            <li>🏆 Eat as many pigs as possible — beat your high score!</li>
         </ul>
-        <button id="play-btn" class="hidden">Dive In! 🌊</button>
+        <button id="play-btn" class="hidden">Launch! 🎯</button>
     </div>
 
     <div class="game-ui">
-        <div class="text-2xl md:text-3xl font-bold text-cyan-400">Score: <span id="score">0</span></div>
-        <p class="text-[10px] md:text-sm opacity-60 mt-1 uppercase tracking-widest">Leans head to Steer • Open Mouth to Chomp</p>
+        <div class="text-2xl md:text-3xl font-bold" style="color:#ffe040; text-shadow:2px 2px 0 rgba(100,30,0,0.8), 0 0 12px rgba(255,200,0,0.4);">Score: <span id="score">0</span></div>
+        <p class="text-[10px] md:text-sm mt-1 uppercase tracking-widest" style="color:rgba(255,255,255,0.75); text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Tilt Head to Steer • Open Mouth to Eat</p>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -152,39 +157,37 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
             const master = audioCtx.createGain();
-            master.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            master.gain.setValueAtTime(0.16, audioCtx.currentTime);
             master.connect(audioCtx.destination);
             musicNodes.push(master);
 
-            // Deep bass drone
-            let bassOsc = null;
-            function addDrone(freq, gainVal) {
+            // Upbeat bouncy chords – C major / G major alternating
+            const chordNotes = [261.6, 329.6, 392.0, 523.2]; // C4, E4, G4, C5
+            let mainOsc = null;
+            chordNotes.forEach((freq, i) => {
                 const osc = audioCtx.createOscillator();
                 const g = audioCtx.createGain();
-                osc.type = "sine";
+                osc.type = "triangle";
                 osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                g.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                g.gain.setValueAtTime([0.28, 0.22, 0.22, 0.14][i], audioCtx.currentTime);
                 osc.connect(g);
                 g.connect(master);
                 osc.start();
+                if (i === 0) mainOsc = osc;
                 musicNodes.push(osc, g);
-                return osc;
-            }
-            bassOsc = addDrone(55,  0.7);   // deep bass
-            addDrone(82,  0.35);  // fifth above
-            addDrone(110, 0.2);   // octave
+            });
 
-            // Slow LFO wobble on the bass
+            // Fast vibrato for a lively feel
             const lfo = audioCtx.createOscillator();
             const lfoGain = audioCtx.createGain();
-            lfo.frequency.setValueAtTime(0.12, audioCtx.currentTime);
-            lfoGain.gain.setValueAtTime(4, audioCtx.currentTime);
+            lfo.frequency.setValueAtTime(5.5, audioCtx.currentTime);
+            lfoGain.gain.setValueAtTime(3.5, audioCtx.currentTime);
             lfo.connect(lfoGain);
-            lfoGain.connect(bassOsc.frequency);
+            if (mainOsc) lfoGain.connect(mainOsc.frequency);
             lfo.start();
             musicNodes.push(lfo, lfoGain);
 
-            // Gentle shimmer (high-freq filtered noise)
+            // Bright high-frequency sparkle
             const bufSize = audioCtx.sampleRate * 2;
             const noiseBuffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
             const data = noiseBuffer.getChannelData(0);
@@ -193,11 +196,11 @@
             noiseSource.buffer = noiseBuffer;
             noiseSource.loop = true;
             const filter = audioCtx.createBiquadFilter();
-            filter.type = "bandpass";
-            filter.frequency.setValueAtTime(800, audioCtx.currentTime);
-            filter.Q.setValueAtTime(0.4, audioCtx.currentTime);
+            filter.type = "highpass";
+            filter.frequency.setValueAtTime(3200, audioCtx.currentTime);
+            filter.Q.setValueAtTime(1.2, audioCtx.currentTime);
             const noiseGain = audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+            noiseGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
             noiseSource.connect(filter);
             filter.connect(noiseGain);
             noiseGain.connect(master);
@@ -227,12 +230,14 @@
         const player = { 
             x: 0, y: 0, 
             vx: 0, vy: 0, 
-            speed: 1.25,      
+            speed: 1.8,      
             size: 90, 
             isChomping: false,
             chompLevel: 0, 
             angle: 0,
-            targetAngle: 0
+            targetAngle: 0,
+            currentSpeed: 0.5,
+            targetSpeed: 0.5
         };
         
         let foods = [];
@@ -240,8 +245,9 @@
 
         // Constants
         const MOUTH_OPEN_THRESHOLD = 0.055; 
-        const STEER_SMOOTHING = 0.04; 
-        const NOSE_DEADZONE = 0.03;   
+        const STEER_SMOOTHING = 0.12;    // faster, more responsive steering
+        const NOSE_DEADZONE = 0.025;     // slightly tighter deadzone
+        const SPEED_SMOOTHING = 0.08;
 
         function updateDimensions() {
             canvas.width = window.innerWidth;
@@ -250,7 +256,7 @@
             // Calculate scale based on a reference width of 1000px
             baseScale = Math.max(0.5, Math.min(canvas.width / 1000, 1.2));
             player.size = 90 * baseScale;
-            player.speed = 1.25 * (baseScale * 1.5); // Adjust speed slightly for larger screens
+            player.speed = 1.8 * (baseScale * 1.5);
 
             // If game hasn't started, center player
             if (!gameActive) {
@@ -324,9 +330,9 @@
             if (foods.length < 8 && gameActive) {
                 foods.push({
                     x: Math.random() * (canvas.width - 100) + 50,
-                    y: Math.random() * (canvas.height - 100) + 50,
-                    size: (12 + Math.random() * 10) * baseScale,
-                    color: `hsl(${Math.random() * 30 + 190}, 90%, 60%)`, 
+                    y: Math.random() * (canvas.height * 0.72 - 60) + 40,
+                    size: (14 + Math.random() * 10) * baseScale,
+                    color: `hsl(${Math.random() * 30 + 95}, 55%, 42%)`,
                     pulse: Math.random() * Math.PI,
                     floatOffset: Math.random() * 1000
                 });
@@ -334,15 +340,17 @@
             setTimeout(spawnFood, 1800);
         }
 
-        function createParticles(x, y, color) {
-            for(let i=0; i<10; i++) {
+        function createParticles(x, y) {
+            for (let i = 0; i < 16; i++) {
+                const angle = (i / 16) * Math.PI * 2;
+                const speed = (2 + Math.random() * 4.5) * baseScale;
                 particles.push({
                     x, y, 
-                    vx: (Math.random()-0.5) * 5 * baseScale, 
-                    vy: (Math.random()-0.5) * 5 * baseScale,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
                     life: 1.0,
-                    size: (Math.random() * 3 + 1) * baseScale,
-                    color
+                    size: (Math.random() * 4.5 + 1.5) * baseScale,
+                    color: `hsl(${40 + Math.random() * 40}, 100%, ${55 + Math.random() * 20}%)`
                 });
             }
         }
@@ -358,8 +366,13 @@
                     const dx = (nose.x - 0.5); 
                     const dy = (nose.y - 0.5);
                     
-                    if (Math.abs(dx) > NOSE_DEADZONE || Math.abs(dy) > NOSE_DEADZONE) {
+                    const displacement = Math.hypot(dx, dy);
+                    if (displacement > NOSE_DEADZONE) {
                         player.targetAngle = Math.atan2(dy, -dx);
+                        // Speed scales with how far the nose is from center (more tilt = faster)
+                        player.targetSpeed = Math.min(displacement / 0.14, 1.0);
+                    } else {
+                        player.targetSpeed = 0.25; // slow drift when face is centered
                     }
 
                     const topLip = landmarks[13];
@@ -374,8 +387,9 @@
             const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
             player.angle += normalizedDiff * STEER_SMOOTHING;
 
-            player.vx = Math.cos(player.angle) * player.speed;
-            player.vy = Math.sin(player.angle) * player.speed;
+            player.currentSpeed += (player.targetSpeed - player.currentSpeed) * SPEED_SMOOTHING;
+            player.vx = Math.cos(player.angle) * player.speed * player.currentSpeed;
+            player.vy = Math.sin(player.angle) * player.speed * player.currentSpeed;
             
             player.x += player.vx;
             player.y += player.vy;
@@ -397,7 +411,7 @@
                 const dist = Math.sqrt(Math.pow(player.x - f.x, 2) + Math.pow(player.y - f.y, 2));
                 if (dist < player.size + f.size) {
                     if (player.isChomping && player.chompLevel > 0.3) {
-                        createParticles(f.x, f.y, f.color);
+                        createParticles(f.x, f.y);
                         foods.splice(index, 1);
                         score += 10;
                         scoreEl.innerText = score;
@@ -409,130 +423,238 @@
             requestAnimationFrame(gameLoop);
         }
 
-        function drawShark(x, y, size, angle, chomp) {
+        function drawBird(x, y, size, angle, chomp) {
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(angle);
-            
-            ctx.fillStyle = "#00f2ff";
-            ctx.shadowBlur = 15 * baseScale;
-            ctx.shadowColor = "rgba(0, 242, 255, 0.5)";
 
-            // Bottom Body
-            ctx.beginPath();
-            ctx.ellipse(0, size * 0.08 * chomp, size, size * 0.35, 0, 0, Math.PI * 2);
-            ctx.fill();
+            const s = size * 0.62;
 
-            // Top Jaw
-            ctx.save();
-            ctx.translate(-size * 0.2, -size * 0.05); 
-            ctx.rotate(-0.55 * chomp); 
-            ctx.translate(size * 0.2, size * 0.05); 
-            
-            ctx.beginPath();
-            ctx.ellipse(0, -size * 0.1, size, size * 0.38, 0, Math.PI, Math.PI * 2);
-            ctx.lineTo(size, -size * 0.1);
-            ctx.closePath();
-            ctx.fill();
+            ctx.shadowBlur = 18 * baseScale;
+            ctx.shadowColor = "rgba(0,0,0,0.28)";
 
-            // Teeth
-            if (chomp > 0.2) {
-                ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-                for(let i=0; i<3; i++) {
-                    const tx = size * (0.6 + i*0.12);
-                    ctx.beginPath();
-                    ctx.moveTo(tx, 0);
-                    ctx.lineTo(tx + size*0.05, size * 0.18 * chomp);
-                    ctx.lineTo(tx + size*0.1, 0);
-                    ctx.fill();
-                }
+            // Tail feathers
+            ctx.fillStyle = '#b01010';
+            const tails = [[-s*0.68, -s*0.28, -0.55], [-s*0.82, 0, -0.05], [-s*0.68, s*0.28, 0.5]];
+            for (const [tx, ty, ta] of tails) {
+                ctx.save();
+                ctx.translate(tx, ty);
+                ctx.rotate(ta);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, s * 0.38, s * 0.11, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             }
 
-            // Eyes
-            ctx.fillStyle = "white";
+            // Main body (round, red)
+            ctx.fillStyle = '#e8201e';
             ctx.beginPath();
-            ctx.arc(size * 0.4, -size * 0.22, size * 0.09, 0, Math.PI * 2);
+            ctx.arc(0, 0, s, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = "black";
+
+            // Highlight
+            ctx.fillStyle = '#f05050';
             ctx.beginPath();
-            ctx.arc(size * 0.45, -size * 0.22, size * 0.04, 0, Math.PI * 2);
+            ctx.ellipse(-s * 0.15, -s * 0.22, s * 0.62, s * 0.44, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Belly patch
+            ctx.fillStyle = '#f5c8a0';
+            ctx.beginPath();
+            ctx.ellipse(s * 0.12, s * 0.22, s * 0.36, s * 0.26, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Angry eyebrow
+            ctx.strokeStyle = '#1a0000';
+            ctx.lineWidth = s * 0.1;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-s * 0.5, -s * 0.44);
+            ctx.lineTo(s * 0.14, -s * 0.56);
+            ctx.stroke();
+
+            // Eye white
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(s * 0.1, -s * 0.3, s * 0.22, 0, Math.PI * 2);
+            ctx.fill();
+            // Pupil
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.arc(s * 0.18, -s * 0.3, s * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+            // Eye shine
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(s * 0.22, -s * 0.36, s * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Beak – two halves that open with chomp
+            ctx.fillStyle = '#ffc200';
+            // Upper beak
+            ctx.save();
+            ctx.translate(s * 0.56, -s * 0.04);
+            ctx.rotate(-0.38 * chomp);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(s * 0.4, s * 0.04);
+            ctx.lineTo(s * 0.26, -s * 0.2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            // Lower beak
+            ctx.save();
+            ctx.translate(s * 0.56, s * 0.04);
+            ctx.rotate(0.38 * chomp);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(s * 0.4, -s * 0.04);
+            ctx.lineTo(s * 0.26, s * 0.2);
+            ctx.closePath();
             ctx.fill();
             ctx.restore();
 
-            // Fins and Tail
-            ctx.fillStyle = "#00f2ff";
-            ctx.beginPath();
-            ctx.moveTo(-size * 0.2, -size * 0.3);
-            ctx.lineTo(-size * 0.5, -size * 0.7);
-            ctx.lineTo(size * 0.1, -size * 0.2);
-            ctx.fill();
-            
-            ctx.beginPath();
-            ctx.moveTo(-size * 0.9, 0);
-            ctx.lineTo(-size * 1.3, -size * 0.5);
-            ctx.lineTo(-size * 1.1, 0);
-            ctx.lineTo(-size * 1.3, size * 0.5);
-            ctx.closePath();
-            ctx.fill();
+            // Head tuft feathers
+            ctx.fillStyle = '#cc1010';
+            const tufts = [[-s*0.08, -s*0.92, 0.1, s*0.12, s*0.28], [s*0.16, -s*0.96, 0.4, s*0.10, s*0.24], [-s*0.32, -s*0.82, -0.3, s*0.10, s*0.22]];
+            for (const [tx, ty, ta, rw, rh] of tufts) {
+                ctx.save();
+                ctx.translate(tx, ty);
+                ctx.rotate(ta);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, rw, rh, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
 
             ctx.restore();
         }
 
-        function draw() {
-            const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height));
-            gradient.addColorStop(0, '#001a2c');
-            gradient.addColorStop(1, '#000b14');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = "rgba(0, 242, 255, 0.04)";
-            for(let i=0; i<20; i++) {
-                const tx = (i * (canvas.width/10) + Date.now()/60) % (canvas.width + 100) - 50;
-                const ty = (i * (canvas.height/10) + Math.sin(Date.now()/2000 + i)*30) % canvas.height;
+        function drawCloud(cx, cy, size) {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(255,255,255,0.92)";
+            const blobs = [[-0.42, 0.12, 0.62], [0, -0.15, 0.82], [0.44, 0.08, 0.64], [-0.68, 0.2, 0.48], [0.68, 0.18, 0.5]];
+            for (const [dx, dy, r] of blobs) {
                 ctx.beginPath();
-                ctx.arc(tx, ty, 1.2 * baseScale, 0, Math.PI*2);
+                ctx.arc(cx + dx * size, cy + dy * size * 0.55, size * r * 0.54, 0, Math.PI * 2);
                 ctx.fill();
             }
+        }
 
-            foods.forEach(f => {
+        function draw() {
+            // Sky gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, '#3aaee0');
+            skyGrad.addColorStop(0.65, '#9dd8f5');
+            skyGrad.addColorStop(1, '#cceebb');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Slowly drifting clouds
+            const t = Date.now() * 0.000028;
+            const cloudDefs = [
+                [0.10 + t % 1.0, 0.11, 70],
+                [0.48 + (t * 0.75) % 1.0, 0.07, 88],
+                [0.80 + (t * 1.3) % 1.0, 0.15, 56],
+                [0.30 + (t * 0.55) % 1.0, 0.19, 44],
+            ];
+            for (const [cx, cy, cs] of cloudDefs) {
+                drawCloud(((cx % 1.05) - 0.02) * canvas.width, cy * canvas.height, cs * baseScale);
+            }
+
+            // Back hills (lighter green)
+            ctx.fillStyle = '#5ab85a';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height);
+            ctx.quadraticCurveTo(canvas.width * 0.25, canvas.height * 0.72, canvas.width * 0.5, canvas.height * 0.80);
+            ctx.quadraticCurveTo(canvas.width * 0.75, canvas.height * 0.88, canvas.width, canvas.height * 0.75);
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Front hills (darker green)
+            ctx.fillStyle = '#3ea03e';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height);
+            ctx.quadraticCurveTo(canvas.width * 0.18, canvas.height * 0.82, canvas.width * 0.38, canvas.height * 0.88);
+            ctx.quadraticCurveTo(canvas.width * 0.58, canvas.height * 0.93, canvas.width * 0.78, canvas.height * 0.86);
+            ctx.quadraticCurveTo(canvas.width * 0.90, canvas.height * 0.82, canvas.width, canvas.height * 0.87);
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Pigs (food)
+            for (const f of foods) {
                 ctx.save();
                 ctx.translate(f.x, f.y);
-                const s = f.size + Math.sin(f.pulse) * 2 * baseScale;
-                ctx.fillStyle = f.color;
-                ctx.shadowBlur = 8 * baseScale;
-                ctx.shadowColor = f.color;
-                
-                ctx.beginPath();
-                ctx.ellipse(0, 0, s, s*0.55, 0, 0, Math.PI*2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(-s*0.8, 0);
-                ctx.lineTo(-s*1.2, -s*0.4);
-                ctx.lineTo(-s*1.2, s*0.4);
-                ctx.closePath();
-                ctx.fill();
-                ctx.fillStyle = "rgba(0,0,0,0.6)";
-                ctx.beginPath();
-                ctx.arc(s*0.4, -s*0.1, s*0.12, 0, Math.PI*2);
-                ctx.fill();
-                ctx.restore();
-            });
+                const s = f.size + Math.sin(f.pulse) * 1.5 * baseScale;
 
-            particles.forEach((p, i) => {
-                p.x += p.vx; p.y += p.vy; p.life -= 0.025;
-                if(p.life <= 0) {
-                    particles.splice(i, 1);
-                    return;
+                ctx.shadowBlur = 10 * baseScale;
+                ctx.shadowColor = "rgba(0,0,0,0.22)";
+
+                // Body
+                ctx.fillStyle = '#5cb85c';
+                ctx.beginPath();
+                ctx.arc(0, 0, s, 0, Math.PI * 2);
+                ctx.fill();
+                // Highlight
+                ctx.fillStyle = '#80d080';
+                ctx.beginPath();
+                ctx.arc(-s * 0.2, -s * 0.28, s * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                // Ears
+                for (const ex of [-1, 1]) {
+                    ctx.fillStyle = '#4a9a4a';
+                    ctx.beginPath();
+                    ctx.arc(ex * s * 0.66, -s * 0.66, s * 0.3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#f09090';
+                    ctx.beginPath();
+                    ctx.arc(ex * s * 0.66, -s * 0.66, s * 0.17, 0, Math.PI * 2);
+                    ctx.fill();
                 }
+                // Snout
+                ctx.fillStyle = '#a0d880';
+                ctx.beginPath();
+                ctx.ellipse(0, s * 0.22, s * 0.38, s * 0.27, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Nostrils
+                ctx.fillStyle = '#3a7a3a';
+                for (const nx of [-0.15, 0.15]) {
+                    ctx.beginPath();
+                    ctx.arc(nx * s, s * 0.24, s * 0.07, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                // Eyes
+                for (const [ewx, epx] of [[-0.3, -0.25], [0.3, 0.35]]) {
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(ewx * s, -s * 0.15, s * 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#111';
+                    ctx.beginPath();
+                    ctx.arc(epx * s, -s * 0.15, s * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            // Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.life -= 0.028;
+                p.vy += 0.08 * baseScale; // slight gravity
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
                 ctx.fillStyle = p.color;
                 ctx.globalAlpha = p.life;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                 ctx.fill();
-            });
+            }
             ctx.globalAlpha = 1.0;
 
-            drawShark(player.x, player.y, player.size, player.angle, player.chompLevel);
+            drawBird(player.x, player.y, player.size, player.angle, player.chompLevel);
         }
 
         window.addEventListener('resize', updateDimensions);
