@@ -152,60 +152,104 @@
         let musicNodes = [];
         let musicOn = false;
 
+        let pluckTimer = null;
+
         function buildMusic() {
             if (audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
             const master = audioCtx.createGain();
-            master.gain.setValueAtTime(0.16, audioCtx.currentTime);
+            master.gain.setValueAtTime(0.18, audioCtx.currentTime);
             master.connect(audioCtx.destination);
             musicNodes.push(master);
 
-            // Upbeat bouncy chords – C major / G major alternating
-            const chordNotes = [261.6, 329.6, 392.0, 523.2]; // C4, E4, G4, C5
-            let mainOsc = null;
-            chordNotes.forEach((freq, i) => {
+            // Ocean wave sound: low-pass filtered noise with slow LFO on gain
+            const bufSize = audioCtx.sampleRate * 4;
+            const noiseBuffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+            const noiseData = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) noiseData[i] = Math.random() * 2 - 1;
+            const waveSource = audioCtx.createBufferSource();
+            waveSource.buffer = noiseBuffer;
+            waveSource.loop = true;
+            const waveFilter = audioCtx.createBiquadFilter();
+            waveFilter.type = "lowpass";
+            waveFilter.frequency.setValueAtTime(420, audioCtx.currentTime);
+            waveFilter.Q.setValueAtTime(0.7, audioCtx.currentTime);
+            const waveGain = audioCtx.createGain();
+            waveGain.gain.setValueAtTime(0.13, audioCtx.currentTime);
+            // Slow LFO (~0.15 Hz) to swell like ocean waves
+            const waveLFO = audioCtx.createOscillator();
+            const waveLFOGain = audioCtx.createGain();
+            waveLFO.frequency.setValueAtTime(0.15, audioCtx.currentTime);
+            waveLFOGain.gain.setValueAtTime(0.10, audioCtx.currentTime);
+            waveLFO.connect(waveLFOGain);
+            waveLFOGain.connect(waveGain.gain);
+            waveLFO.start();
+            waveSource.connect(waveFilter);
+            waveFilter.connect(waveGain);
+            waveGain.connect(master);
+            waveSource.start();
+            musicNodes.push(waveSource, waveFilter, waveGain, waveLFO, waveLFOGain);
+
+            // Gentle ambient pad: Am chord (A3, C4, E4, A4) with soft sine waves
+            const padNotes = [220.0, 261.6, 329.6, 440.0]; // A3, C4, E4, A4
+            let padOscs = [];
+            padNotes.forEach((freq, i) => {
                 const osc = audioCtx.createOscillator();
                 const g = audioCtx.createGain();
-                osc.type = "triangle";
+                osc.type = "sine";
                 osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                g.gain.setValueAtTime([0.28, 0.22, 0.22, 0.14][i], audioCtx.currentTime);
+                g.gain.setValueAtTime([0.12, 0.09, 0.08, 0.05][i], audioCtx.currentTime);
                 osc.connect(g);
                 g.connect(master);
                 osc.start();
-                if (i === 0) mainOsc = osc;
+                padOscs.push(osc);
                 musicNodes.push(osc, g);
             });
 
-            // Fast vibrato for a lively feel
+            // Very slow, gentle vibrato (0.8 Hz) on the pad root
             const lfo = audioCtx.createOscillator();
             const lfoGain = audioCtx.createGain();
-            lfo.frequency.setValueAtTime(5.5, audioCtx.currentTime);
-            lfoGain.gain.setValueAtTime(3.5, audioCtx.currentTime);
+            lfo.frequency.setValueAtTime(0.8, audioCtx.currentTime);
+            lfoGain.gain.setValueAtTime(1.2, audioCtx.currentTime);
             lfo.connect(lfoGain);
-            if (mainOsc) lfoGain.connect(mainOsc.frequency);
+            lfoGain.connect(padOscs[0].frequency);
             lfo.start();
             musicNodes.push(lfo, lfoGain);
+        }
 
-            // Bright high-frequency sparkle
-            const bufSize = audioCtx.sampleRate * 2;
-            const noiseBuffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-            const data = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
-            const noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = noiseBuffer;
-            noiseSource.loop = true;
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = "highpass";
-            filter.frequency.setValueAtTime(3200, audioCtx.currentTime);
-            filter.Q.setValueAtTime(1.2, audioCtx.currentTime);
-            const noiseGain = audioCtx.createGain();
-            noiseGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-            noiseSource.connect(filter);
-            filter.connect(noiseGain);
-            noiseGain.connect(master);
-            noiseSource.start();
-            musicNodes.push(noiseSource, filter, noiseGain);
+        // Acoustic plucked note: simple sine with fast decay for a guitar-like feel
+        function pluckNote(freq) {
+            if (!audioCtx || audioCtx.state === "suspended" || !musicNodes[0]) return;
+            const osc = audioCtx.createOscillator();
+            const env = audioCtx.createGain();
+            const master = musicNodes[0]; // master gain node
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            env.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            env.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2.2);
+            osc.connect(env);
+            env.connect(master);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 2.3);
+        }
+
+        // Am pentatonic scale notes (A3, C4, D4, E4, G4, A4)
+        const pentatonic = [220.0, 261.6, 293.7, 329.6, 392.0, 440.0];
+
+        function schedulePlucks() {
+            if (!musicOn) return;
+            // Play 1–2 random notes from Am pentatonic every 2–4 seconds
+            const note1 = pentatonic[Math.floor(Math.random() * pentatonic.length)];
+            pluckNote(note1);
+            if (Math.random() > 0.5) {
+                setTimeout(() => {
+                    if (musicOn) pluckNote(pentatonic[Math.floor(Math.random() * pentatonic.length)]);
+                }, 400 + Math.random() * 300);
+            }
+            const nextDelay = 2000 + Math.random() * 2000;
+            if (pluckTimer) clearTimeout(pluckTimer);
+            pluckTimer = setTimeout(schedulePlucks, nextDelay);
         }
 
         function startMusic() {
@@ -213,12 +257,14 @@
             if (audioCtx.state === "suspended") audioCtx.resume();
             musicOn = true;
             musicBtn.textContent = "🎵";
+            schedulePlucks();
         }
 
         function stopMusic() {
             if (audioCtx) audioCtx.suspend();
             musicOn = false;
             musicBtn.textContent = "🔇";
+            if (pluckTimer) { clearTimeout(pluckTimer); pluckTimer = null; }
         }
 
         musicBtn.addEventListener("click", () => {
@@ -244,7 +290,7 @@
         let particles = [];
 
         // Constants
-        const MOUTH_OPEN_THRESHOLD = 0.055; 
+        const MOUTH_OPEN_THRESHOLD = 0.03; 
         const STEER_SMOOTHING = 0.12;    // faster, more responsive steering
         const NOSE_DEADZONE = 0.025;     // slightly tighter deadzone
         const SPEED_SMOOTHING = 0.08;
