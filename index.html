@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mouth-Mover: Deep Sea Snack</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000b14; font-family: sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #video-container {
+            position: fixed;
+            bottom: env(safe-area-inset-bottom, 20px);
+            right: env(safe-area-inset-right, 20px);
+            width: clamp(100px, 20vw, 160px);
+            aspect-ratio: 4/3;
+            border: 2px solid rgba(0, 242, 255, 0.5);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            z-index: 10;
+            transform: scaleX(-1);
+        }
+        #webcam { width: 100%; height: 100%; object-fit: cover; }
+        .game-ui {
+            position: fixed;
+            top: env(safe-area-inset-top, 20px);
+            left: env(safe-area-inset-left, 20px);
+            color: white;
+            pointer-events: none;
+            z-index: 20;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        #status-msg {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #00f2ff;
+            background: rgba(0,0,0,0.95);
+            padding: clamp(1.5rem, 5vw, 2.5rem);
+            border-radius: 24px;
+            border: 1px solid #00f2ff;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+            z-index: 100;
+            width: 90%;
+            max-width: 400px;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline></video>
+    </div>
+
+    <div id="status-msg">
+        <h1 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 tracking-tight">Ocean Drifter</h1>
+        <p id="instruction" class="text-sm md:text-lg opacity-80">Initializing Neural Tracker...</p>
+        <div id="loading-bar" class="w-full bg-gray-700 h-1.5 mt-6 rounded-full overflow-hidden">
+            <div id="loading-progress" class="bg-cyan-400 h-full w-0 transition-all duration-500"></div>
+        </div>
+    </div>
+
+    <div class="game-ui">
+        <div class="text-2xl md:text-3xl font-bold text-cyan-400">Score: <span id="score">0</span></div>
+        <p class="text-[10px] md:text-sm opacity-60 mt-1 uppercase tracking-widest">Leans head to Steer • Open Mouth to Chomp</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script type="module">
+        const { FaceLandmarker, FilesetResolver } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3");
+
+        const video = document.getElementById("webcam");
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const statusMsg = document.getElementById("status-msg");
+        const instruction = document.getElementById("instruction");
+        const progressBar = document.getElementById("loading-progress");
+
+        let faceLandmarker;
+        let lastVideoTime = -1;
+        let score = 0;
+        let gameActive = false;
+        let baseScale = 1;
+
+        // Player configuration
+        const player = { 
+            x: 0, y: 0, 
+            vx: 0, vy: 0, 
+            speed: 1.25,      
+            size: 60, 
+            isChomping: false,
+            chompLevel: 0, 
+            angle: 0,
+            targetAngle: 0
+        };
+        
+        let foods = [];
+        let particles = [];
+
+        // Constants
+        const MOUTH_OPEN_THRESHOLD = 0.055; 
+        const STEER_SMOOTHING = 0.04; 
+        const NOSE_DEADZONE = 0.03;   
+
+        function updateDimensions() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // Calculate scale based on a reference width of 1000px
+            baseScale = Math.max(0.5, Math.min(canvas.width / 1000, 1.2));
+            player.size = 60 * baseScale;
+            player.speed = 1.25 * (baseScale * 1.5); // Adjust speed slightly for larger screens
+
+            // If game hasn't started, center player
+            if (!gameActive) {
+                player.x = canvas.width / 2;
+                player.y = canvas.height / 2;
+            }
+        }
+
+        async function setup() {
+            updateDimensions();
+
+            try {
+                const filesetResolver = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                );
+                progressBar.style.width = "60%";
+                instruction.innerText = "Calibrating Sensors...";
+
+                faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+                    baseOptions: {
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                        delegate: "GPU"
+                    },
+                    outputFaceBlendshapes: true,
+                    runningMode: "VIDEO",
+                    numFaces: 1
+                });
+
+                progressBar.style.width = "100%";
+                startCamera();
+            } catch (err) {
+                instruction.innerText = "Initialization failed. Check camera permissions.";
+            }
+        }
+
+        async function startCamera() {
+            instruction.innerText = "Activating Webcam...";
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 }, 
+                        height: { ideal: 480 }, 
+                        facingMode: "user" 
+                    } 
+                });
+                video.srcObject = stream;
+                video.addEventListener("loadeddata", () => {
+                    statusMsg.classList.add("hidden");
+                    gameActive = true;
+                    player.x = canvas.width / 2;
+                    player.y = canvas.height / 2;
+                    spawnFood();
+                    requestAnimationFrame(gameLoop);
+                });
+            } catch (err) {
+                instruction.innerText = "Camera access denied.";
+            }
+        }
+
+        function spawnFood() {
+            if (foods.length < 8 && gameActive) {
+                foods.push({
+                    x: Math.random() * (canvas.width - 100) + 50,
+                    y: Math.random() * (canvas.height - 100) + 50,
+                    size: (12 + Math.random() * 10) * baseScale,
+                    color: `hsl(${Math.random() * 30 + 190}, 90%, 60%)`, 
+                    pulse: Math.random() * Math.PI,
+                    floatOffset: Math.random() * 1000
+                });
+            }
+            setTimeout(spawnFood, 1800);
+        }
+
+        function createParticles(x, y, color) {
+            for(let i=0; i<10; i++) {
+                particles.push({
+                    x, y, 
+                    vx: (Math.random()-0.5) * 5 * baseScale, 
+                    vy: (Math.random()-0.5) * 5 * baseScale,
+                    life: 1.0,
+                    size: (Math.random() * 3 + 1) * baseScale,
+                    color
+                });
+            }
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+
+            if (video.currentTime !== lastVideoTime) {
+                const result = faceLandmarker.detectForVideo(video, performance.now());
+                if (result.faceLandmarks && result.faceLandmarks.length > 0) {
+                    const landmarks = result.faceLandmarks[0];
+                    const nose = landmarks[1];
+                    const dx = (nose.x - 0.5); 
+                    const dy = (nose.y - 0.5);
+                    
+                    if (Math.abs(dx) > NOSE_DEADZONE || Math.abs(dy) > NOSE_DEADZONE) {
+                        player.targetAngle = Math.atan2(dy, -dx);
+                    }
+
+                    const topLip = landmarks[13];
+                    const bottomLip = landmarks[14];
+                    const mouthDist = Math.sqrt(Math.pow(topLip.x - bottomLip.x, 2) + Math.pow(topLip.y - bottomLip.y, 2));
+                    player.isChomping = mouthDist > MOUTH_OPEN_THRESHOLD;
+                }
+                lastVideoTime = video.currentTime;
+            }
+
+            const angleDiff = player.targetAngle - player.angle;
+            const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+            player.angle += normalizedDiff * STEER_SMOOTHING;
+
+            player.vx = Math.cos(player.angle) * player.speed;
+            player.vy = Math.sin(player.angle) * player.speed;
+            
+            player.x += player.vx;
+            player.y += player.vy;
+
+            const margin = player.size * 1.5;
+            if (player.x < -margin) player.x = canvas.width + margin;
+            if (player.x > canvas.width + margin) player.x = -margin;
+            if (player.y < -margin) player.y = canvas.height + margin;
+            if (player.y > canvas.height + margin) player.y = -margin;
+
+            const targetChomp = player.isChomping ? 1 : 0;
+            player.chompLevel += (targetChomp - player.chompLevel) * 0.2;
+
+            foods.forEach((f, index) => {
+                f.pulse += 0.03;
+                f.x += Math.sin((Date.now() + f.floatOffset) * 0.001) * 0.2;
+                f.y += Math.cos((Date.now() + f.floatOffset) * 0.001) * 0.2;
+
+                const dist = Math.sqrt(Math.pow(player.x - f.x, 2) + Math.pow(player.y - f.y, 2));
+                if (dist < player.size + f.size) {
+                    if (player.isChomping && player.chompLevel > 0.3) {
+                        createParticles(f.x, f.y, f.color);
+                        foods.splice(index, 1);
+                        score += 10;
+                        scoreEl.innerText = score;
+                    }
+                }
+            });
+
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawShark(x, y, size, angle, chomp) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            
+            ctx.fillStyle = "#00f2ff";
+            ctx.shadowBlur = 15 * baseScale;
+            ctx.shadowColor = "rgba(0, 242, 255, 0.5)";
+
+            // Bottom Body
+            ctx.beginPath();
+            ctx.ellipse(0, size * 0.08 * chomp, size, size * 0.35, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Top Jaw
+            ctx.save();
+            ctx.translate(-size * 0.2, -size * 0.05); 
+            ctx.rotate(-0.55 * chomp); 
+            ctx.translate(size * 0.2, size * 0.05); 
+            
+            ctx.beginPath();
+            ctx.ellipse(0, -size * 0.1, size, size * 0.38, 0, Math.PI, Math.PI * 2);
+            ctx.lineTo(size, -size * 0.1);
+            ctx.closePath();
+            ctx.fill();
+
+            // Teeth
+            if (chomp > 0.2) {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+                for(let i=0; i<3; i++) {
+                    const tx = size * (0.6 + i*0.12);
+                    ctx.beginPath();
+                    ctx.moveTo(tx, 0);
+                    ctx.lineTo(tx + size*0.05, size * 0.18 * chomp);
+                    ctx.lineTo(tx + size*0.1, 0);
+                    ctx.fill();
+                }
+            }
+
+            // Eyes
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(size * 0.4, -size * 0.22, size * 0.09, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "black";
+            ctx.beginPath();
+            ctx.arc(size * 0.45, -size * 0.22, size * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Fins and Tail
+            ctx.fillStyle = "#00f2ff";
+            ctx.beginPath();
+            ctx.moveTo(-size * 0.2, -size * 0.3);
+            ctx.lineTo(-size * 0.5, -size * 0.7);
+            ctx.lineTo(size * 0.1, -size * 0.2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(-size * 0.9, 0);
+            ctx.lineTo(-size * 1.3, -size * 0.5);
+            ctx.lineTo(-size * 1.1, 0);
+            ctx.lineTo(-size * 1.3, size * 0.5);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function draw() {
+            const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, Math.max(canvas.width, canvas.height));
+            gradient.addColorStop(0, '#001a2c');
+            gradient.addColorStop(1, '#000b14');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "rgba(0, 242, 255, 0.04)";
+            for(let i=0; i<20; i++) {
+                const tx = (i * (canvas.width/10) + Date.now()/60) % (canvas.width + 100) - 50;
+                const ty = (i * (canvas.height/10) + Math.sin(Date.now()/2000 + i)*30) % canvas.height;
+                ctx.beginPath();
+                ctx.arc(tx, ty, 1.2 * baseScale, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            foods.forEach(f => {
+                ctx.save();
+                ctx.translate(f.x, f.y);
+                const s = f.size + Math.sin(f.pulse) * 2 * baseScale;
+                ctx.fillStyle = f.color;
+                ctx.shadowBlur = 8 * baseScale;
+                ctx.shadowColor = f.color;
+                
+                ctx.beginPath();
+                ctx.ellipse(0, 0, s, s*0.55, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(-s*0.8, 0);
+                ctx.lineTo(-s*1.2, -s*0.4);
+                ctx.lineTo(-s*1.2, s*0.4);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.beginPath();
+                ctx.arc(s*0.4, -s*0.1, s*0.12, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            particles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy; p.life -= 0.025;
+                if(p.life <= 0) {
+                    particles.splice(i, 1);
+                    return;
+                }
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            drawShark(player.x, player.y, player.size, player.angle, player.chompLevel);
+        }
+
+        window.addEventListener('resize', updateDimensions);
+        setup();
+    </script>
+</body>
+</html>
