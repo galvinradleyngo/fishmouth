@@ -157,6 +157,7 @@
             musicNodes.push(master);
 
             // Deep bass drone
+            let bassOsc = null;
             function addDrone(freq, gainVal) {
                 const osc = audioCtx.createOscillator();
                 const g = audioCtx.createGain();
@@ -167,8 +168,9 @@
                 g.connect(master);
                 osc.start();
                 musicNodes.push(osc, g);
+                return osc;
             }
-            addDrone(55,  0.7);   // deep bass
+            bassOsc = addDrone(55,  0.7);   // deep bass
             addDrone(82,  0.35);  // fifth above
             addDrone(110, 0.2);   // octave
 
@@ -178,7 +180,7 @@
             lfo.frequency.setValueAtTime(0.12, audioCtx.currentTime);
             lfoGain.gain.setValueAtTime(4, audioCtx.currentTime);
             lfo.connect(lfoGain);
-            lfoGain.connect(musicNodes[1].frequency); // modulate bass osc
+            lfoGain.connect(bassOsc.frequency);
             lfo.start();
             musicNodes.push(lfo, lfoGain);
 
@@ -308,7 +310,7 @@
                         gameActive = true;
                         player.x = canvas.width / 2;
                         player.y = canvas.height / 2;
-                        startMusic();
+                        if (!musicOn) startMusic();
                         spawnFood();
                         requestAnimationFrame(gameLoop);
                     }, { once: true });
