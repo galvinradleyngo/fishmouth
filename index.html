@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Angry Beak: Bird Blast</title>
+    <title>Fish be With You</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; background: #4db8e8; font-family: 'Arial Rounded MT Bold', Arial, sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; }
+        body { margin: 0; overflow: hidden; background: #0a3a6e; font-family: 'Arial Rounded MT Bold', Arial, sans-serif; touch-action: none; -webkit-user-select: none; user-select: none; }
         canvas { display: block; width: 100vw; height: 100vh; }
         #video-container {
             position: fixed;
@@ -15,7 +15,7 @@
             right: env(safe-area-inset-right, 20px);
             width: clamp(100px, 20vw, 160px);
             aspect-ratio: 4/3;
-            border: 3px solid rgba(232, 160, 0, 0.9);
+            border: 3px solid rgba(0, 160, 220, 0.9);
             border-radius: 12px;
             overflow: hidden;
             background: #000;
@@ -31,7 +31,7 @@
             color: white;
             pointer-events: none;
             z-index: 20;
-            text-shadow: 2px 2px 0 rgba(100, 30, 0, 0.8);
+            text-shadow: 2px 2px 0 rgba(0, 30, 80, 0.8);
         }
         #status-msg {
             position: fixed;
@@ -39,12 +39,12 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            color: #5c1a00;
-            background: rgba(255, 248, 220, 0.97);
+            color: #c0e8ff;
+            background: rgba(5, 45, 95, 0.96);
             padding: clamp(1.5rem, 5vw, 2.5rem);
             border-radius: 24px;
-            border: 4px solid #e8a000;
-            box-shadow: 0 6px 0 #b07000, 0 8px 24px rgba(0,0,0,0.3);
+            border: 4px solid #0090d0;
+            box-shadow: 0 6px 0 #005080, 0 8px 24px rgba(0,0,0,0.5);
             z-index: 100;
             width: 90%;
             max-width: 420px;
@@ -54,9 +54,9 @@
             position: fixed;
             top: env(safe-area-inset-top, 20px);
             right: env(safe-area-inset-right, 20px);
-            background: rgba(255, 200, 0, 0.92);
-            border: 2px solid #b07800;
-            color: #5c1a00;
+            background: rgba(0, 150, 200, 0.92);
+            border: 2px solid #006090;
+            color: #ffffff;
             border-radius: 50%;
             width: 48px;
             height: 48px;
@@ -67,13 +67,13 @@
             align-items: center;
             justify-content: center;
             transition: background 0.15s, transform 0.1s;
-            box-shadow: 0 3px 0 #b07800;
+            box-shadow: 0 3px 0 #004870;
         }
-        #music-btn:hover { background: rgba(255, 220, 50, 0.95); transform: scale(1.08); }
+        #music-btn:hover { background: rgba(30, 190, 240, 0.95); transform: scale(1.08); }
         #play-btn {
             margin-top: 1.5rem;
             padding: 0.7rem 2.4rem;
-            background: #e8201e;
+            background: #0080c0;
             color: white;
             border: none;
             border-radius: 999px;
@@ -82,10 +82,10 @@
             cursor: pointer;
             letter-spacing: 0.06em;
             transition: transform 0.1s, box-shadow 0.1s;
-            box-shadow: 0 5px 0 #9a0e0c;
+            box-shadow: 0 5px 0 #005090;
             text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
-        #play-btn:hover { transform: translateY(2px); box-shadow: 0 3px 0 #9a0e0c; }
+        #play-btn:hover { transform: translateY(2px); box-shadow: 0 3px 0 #005090; }
         #instructions-list {
             text-align: left;
             margin: 1rem auto 0;
@@ -93,7 +93,7 @@
             font-size: 0.9rem;
             opacity: 0.9;
             line-height: 1.9;
-            color: #3a1000;
+            color: #90d0f0;
         }
     </style>
 </head>
@@ -106,22 +106,22 @@
     </div>
 
     <div id="status-msg">
-        <h1 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 tracking-tight" style="color:#e8201e; text-shadow:2px 2px 0 #9a0e0c;">🐦 Angry Beak</h1>
-        <p id="instruction" class="text-sm md:text-lg" style="color:#5c1a00;">Initializing Face Tracker...</p>
-        <div id="loading-bar" class="w-full bg-yellow-200 h-2 mt-6 rounded-full overflow-hidden" style="border:1px solid #b07800;">
-            <div id="loading-progress" class="h-full w-0 transition-all duration-500" style="background:#e8201e;"></div>
+        <h1 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 tracking-tight" style="color:#40d0ff; text-shadow:2px 2px 0 #004a80;">🐟 Fish be With You</h1>
+        <p id="instruction" class="text-sm md:text-lg" style="color:#c0e8ff;">Initializing Face Tracker...</p>
+        <div id="loading-bar" class="w-full h-2 mt-6 rounded-full overflow-hidden" style="background:#0a4a80; border:1px solid #0090d0;">
+            <div id="loading-progress" class="h-full w-0 transition-all duration-500" style="background:#40d0ff;"></div>
         </div>
         <ul id="instructions-list" class="hidden">
-            <li>🐦 <strong>Tilt your head</strong> to steer your bird</li>
-            <li>👄 <strong>Open your mouth</strong> to launch and eat pigs!</li>
+            <li>🐟 <strong>Tilt your head</strong> to steer your fish</li>
+            <li>👄 <strong>Open your mouth</strong> to eat smaller fish!</li>
             <li>🎵 Use the <strong>🎵 button</strong> (top-right) to toggle music</li>
-            <li>🏆 Eat as many pigs as possible — beat your high score!</li>
+            <li>🏆 Eat as many fish as possible — beat your high score!</li>
         </ul>
-        <button id="play-btn" class="hidden">Launch! 🎯</button>
+        <button id="play-btn" class="hidden">Dive In! 🌊</button>
     </div>
 
     <div class="game-ui">
-        <div class="text-2xl md:text-3xl font-bold" style="color:#ffe040; text-shadow:2px 2px 0 rgba(100,30,0,0.8), 0 0 12px rgba(255,200,0,0.4);">Score: <span id="score">0</span></div>
+        <div class="text-2xl md:text-3xl font-bold" style="color:#ffe040; text-shadow:2px 2px 0 rgba(0,30,80,0.8), 0 0 12px rgba(0,150,255,0.4);">Score: <span id="score">0</span></div>
         <p class="text-[10px] md:text-sm mt-1 uppercase tracking-widest" style="color:rgba(255,255,255,0.75); text-shadow:1px 1px 0 rgba(0,0,0,0.5);">Tilt Head to Steer • Open Mouth to Eat</p>
     </div>
 
@@ -328,11 +328,16 @@
 
         function spawnFood() {
             if (foods.length < 8 && gameActive) {
+                const hue = Math.random() * 360;
+                const facing = Math.random() > 0.5 ? 1 : -1;
                 foods.push({
                     x: Math.random() * (canvas.width - 100) + 50,
                     y: Math.random() * (canvas.height * 0.72 - 60) + 40,
                     size: (14 + Math.random() * 10) * baseScale,
-                    color: `hsl(${Math.random() * 30 + 95}, 55%, 42%)`,
+                    color: `hsl(${hue}, 80%, 55%)`,
+                    tailColor: `hsl(${hue}, 80%, 35%)`,
+                    highlightColor: `hsl(${hue}, 70%, 75%)`,
+                    facing,
                     pulse: Math.random() * Math.PI,
                     floatOffset: Math.random() * 1000
                 });
@@ -350,7 +355,7 @@
                     vy: Math.sin(angle) * speed,
                     life: 1.0,
                     size: (Math.random() * 4.5 + 1.5) * baseScale,
-                    color: `hsl(${40 + Math.random() * 40}, 100%, ${55 + Math.random() * 20}%)`
+                    color: `hsl(${170 + Math.random() * 80}, 85%, ${55 + Math.random() * 25}%)`
                 });
             }
         }
@@ -423,7 +428,7 @@
             requestAnimationFrame(gameLoop);
         }
 
-        function drawBird(x, y, size, angle, chomp) {
+        function drawFish(x, y, size, angle, chomp) {
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(angle);
@@ -433,209 +438,260 @@
             ctx.shadowBlur = 18 * baseScale;
             ctx.shadowColor = "rgba(0,0,0,0.28)";
 
-            // Tail feathers
-            ctx.fillStyle = '#b01010';
-            const tails = [[-s*0.68, -s*0.28, -0.55], [-s*0.82, 0, -0.05], [-s*0.68, s*0.28, 0.5]];
-            for (const [tx, ty, ta] of tails) {
-                ctx.save();
-                ctx.translate(tx, ty);
-                ctx.rotate(ta);
-                ctx.beginPath();
-                ctx.ellipse(0, 0, s * 0.38, s * 0.11, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
-
-            // Main body (round, red)
-            ctx.fillStyle = '#e8201e';
+            // Tail fin (back = left side)
+            ctx.fillStyle = '#d44000';
             ctx.beginPath();
-            ctx.arc(0, 0, s, 0, Math.PI * 2);
+            ctx.moveTo(-s * 0.85, 0);
+            ctx.lineTo(-s * 1.45, -s * 0.72);
+            ctx.lineTo(-s * 1.18, 0);
+            ctx.lineTo(-s * 1.45, s * 0.72);
+            ctx.closePath();
             ctx.fill();
 
-            // Highlight
-            ctx.fillStyle = '#f05050';
+            // Dorsal fin (top)
+            ctx.fillStyle = '#d44000';
             ctx.beginPath();
-            ctx.ellipse(-s * 0.15, -s * 0.22, s * 0.62, s * 0.44, -0.3, 0, Math.PI * 2);
+            ctx.moveTo(-s * 0.25, -s * 0.62);
+            ctx.lineTo(s * 0.20, -s * 0.60);
+            ctx.quadraticCurveTo(s * 0.35, -s * 0.38, s * 0.25, -s * 0.38);
+            ctx.lineTo(-s * 0.18, -s * 0.38);
+            ctx.closePath();
             ctx.fill();
 
-            // Belly patch
-            ctx.fillStyle = '#f5c8a0';
+            // Main body (horizontal ellipse)
+            ctx.fillStyle = '#ff6820';
             ctx.beginPath();
-            ctx.ellipse(s * 0.12, s * 0.22, s * 0.36, s * 0.26, 0.2, 0, Math.PI * 2);
+            ctx.ellipse(0, 0, s, s * 0.62, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Angry eyebrow
-            ctx.strokeStyle = '#1a0000';
-            ctx.lineWidth = s * 0.1;
+            // Body highlight
+            ctx.fillStyle = '#ffaa68';
+            ctx.beginPath();
+            ctx.ellipse(-s * 0.18, -s * 0.2, s * 0.60, s * 0.27, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Belly
+            ctx.fillStyle = '#ffe8c0';
+            ctx.beginPath();
+            ctx.ellipse(s * 0.08, s * 0.22, s * 0.55, s * 0.2, 0.12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pectoral fin
+            ctx.fillStyle = '#e05010';
+            ctx.save();
+            ctx.translate(s * 0.05, s * 0.34);
+            ctx.rotate(0.38);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s * 0.33, s * 0.11, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // BIG MOUTH at the front – opens with chomp
+            const mouthAngle = chomp * Math.PI * 0.45 + 0.1;
+            ctx.save();
+            ctx.translate(s * 0.90, s * 0.06);
+
+            // Dark interior (visible when mouth opens)
+            ctx.fillStyle = '#7a0000';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, s * 0.38, -mouthAngle, mouthAngle, false);
+            ctx.closePath();
+            ctx.fill();
+
+            // Upper jaw
+            ctx.fillStyle = '#ff6820';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, s * 0.42, -Math.PI * 0.95, -mouthAngle, false);
+            ctx.closePath();
+            ctx.fill();
+
+            // Lower jaw
+            ctx.fillStyle = '#ff6820';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, s * 0.42, mouthAngle, Math.PI * 0.95, false);
+            ctx.closePath();
+            ctx.fill();
+
+            // Lip outline
+            ctx.strokeStyle = '#b03800';
+            ctx.lineWidth = s * 0.06;
             ctx.lineCap = 'round';
             ctx.beginPath();
-            ctx.moveTo(-s * 0.5, -s * 0.44);
-            ctx.lineTo(s * 0.14, -s * 0.56);
+            ctx.arc(0, 0, s * 0.42, -Math.PI * 0.95, -mouthAngle, false);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 0.42, mouthAngle, Math.PI * 0.95, false);
             ctx.stroke();
 
-            // Eye white
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(s * 0.1, -s * 0.3, s * 0.22, 0, Math.PI * 2);
-            ctx.fill();
-            // Pupil
-            ctx.fillStyle = '#111';
-            ctx.beginPath();
-            ctx.arc(s * 0.18, -s * 0.3, s * 0.12, 0, Math.PI * 2);
-            ctx.fill();
-            // Eye shine
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(s * 0.22, -s * 0.36, s * 0.05, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Beak – two halves that open with chomp
-            ctx.fillStyle = '#ffc200';
-            // Upper beak
-            ctx.save();
-            ctx.translate(s * 0.56, -s * 0.04);
-            ctx.rotate(-0.38 * chomp);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(s * 0.4, s * 0.04);
-            ctx.lineTo(s * 0.26, -s * 0.2);
-            ctx.closePath();
-            ctx.fill();
-            ctx.restore();
-            // Lower beak
-            ctx.save();
-            ctx.translate(s * 0.56, s * 0.04);
-            ctx.rotate(0.38 * chomp);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(s * 0.4, -s * 0.04);
-            ctx.lineTo(s * 0.26, s * 0.2);
-            ctx.closePath();
-            ctx.fill();
             ctx.restore();
 
-            // Head tuft feathers
-            ctx.fillStyle = '#cc1010';
-            const tufts = [[-s*0.08, -s*0.92, 0.1, s*0.12, s*0.28], [s*0.16, -s*0.96, 0.4, s*0.10, s*0.24], [-s*0.32, -s*0.82, -0.3, s*0.10, s*0.22]];
-            for (const [tx, ty, ta, rw, rh] of tufts) {
-                ctx.save();
-                ctx.translate(tx, ty);
-                ctx.rotate(ta);
-                ctx.beginPath();
-                ctx.ellipse(0, 0, rw, rh, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
+            // Eye (big, googly)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(s * 0.38, -s * 0.22, s * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0050a8';
+            ctx.beginPath();
+            ctx.arc(s * 0.44, -s * 0.22, s * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#001040';
+            ctx.beginPath();
+            ctx.arc(s * 0.46, -s * 0.22, s * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(s * 0.50, -s * 0.28, s * 0.05, 0, Math.PI * 2);
+            ctx.fill();
 
             ctx.restore();
         }
 
-        function drawCloud(cx, cy, size) {
+        function drawBubble(cx, cy, size) {
+            ctx.save();
+            ctx.globalAlpha = 0.55;
+            ctx.strokeStyle = 'rgba(180, 230, 255, 0.9)';
+            ctx.lineWidth = size * 0.10;
+            ctx.beginPath();
+            ctx.arc(cx, cy, size, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 0.12;
+            ctx.fillStyle = 'rgba(200, 240, 255, 1)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 0.7;
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(cx - size * 0.3, cy - size * 0.3, size * 0.22, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawCoral(x, y, size, color) {
             ctx.shadowBlur = 0;
-            ctx.fillStyle = "rgba(255,255,255,0.92)";
-            const blobs = [[-0.42, 0.12, 0.62], [0, -0.15, 0.82], [0.44, 0.08, 0.64], [-0.68, 0.2, 0.48], [0.68, 0.18, 0.5]];
-            for (const [dx, dy, r] of blobs) {
+            ctx.fillStyle = color;
+            const branches = 5;
+            for (let i = 0; i < branches; i++) {
+                const ang = ((i / branches) - 0.5) * Math.PI * 0.65 - Math.PI * 0.5;
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(ang);
                 ctx.beginPath();
-                ctx.arc(cx + dx * size, cy + dy * size * 0.55, size * r * 0.54, 0, Math.PI * 2);
+                ctx.ellipse(0, -size * 0.45, size * 0.09, size * 0.48, 0, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.beginPath();
+                ctx.arc(0, -size * 0.95, size * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             }
         }
 
         function draw() {
-            // Sky gradient
-            const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            skyGrad.addColorStop(0, '#3aaee0');
-            skyGrad.addColorStop(0.65, '#9dd8f5');
-            skyGrad.addColorStop(1, '#cceebb');
-            ctx.fillStyle = skyGrad;
+            // Underwater gradient (lighter near surface/top, darker in the deep/bottom)
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGrad.addColorStop(0, '#0a6080');
+            bgGrad.addColorStop(0.45, '#085570');
+            bgGrad.addColorStop(1, '#032840');
+            ctx.fillStyle = bgGrad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Slowly drifting clouds
+            // Light rays from the surface
+            ctx.save();
+            const lt = Date.now() * 0.0003;
+            for (let i = 0; i < 6; i++) {
+                const lx = ((i / 6 + Math.sin(lt + i * 1.2) * 0.04) % 1) * canvas.width;
+                const lw = canvas.width * 0.07;
+                const lgrd = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.65);
+                lgrd.addColorStop(0, 'rgba(160, 230, 255, 0.10)');
+                lgrd.addColorStop(1, 'rgba(160, 230, 255, 0)');
+                ctx.fillStyle = lgrd;
+                ctx.beginPath();
+                ctx.moveTo(lx - lw * 0.3, 0);
+                ctx.lineTo(lx + lw * 0.3, 0);
+                ctx.lineTo(lx + lw * 2.5, canvas.height * 0.65);
+                ctx.lineTo(lx - lw * 1.5, canvas.height * 0.65);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Rising bubbles
             const t = Date.now() * 0.000028;
-            const cloudDefs = [
-                [0.10 + t % 1.0, 0.11, 70],
-                [0.48 + (t * 0.75) % 1.0, 0.07, 88],
-                [0.80 + (t * 1.3) % 1.0, 0.15, 56],
-                [0.30 + (t * 0.55) % 1.0, 0.19, 44],
+            const bubbleDefs = [
+                [0.12 + (t * 0.40) % 1.0, 1.0 - (t * 0.40) % 1.0, 9],
+                [0.32 + (t * 0.28) % 1.0, 1.0 - (t * 0.28) % 1.0, 14],
+                [0.57 + (t * 0.65) % 1.0, 1.0 - (t * 0.65) % 1.0, 7],
+                [0.76 + (t * 0.38) % 1.0, 1.0 - (t * 0.38) % 1.0, 11],
+                [0.88 + (t * 0.55) % 1.0, 1.0 - (t * 0.55) % 1.0, 5],
             ];
-            for (const [cx, cy, cs] of cloudDefs) {
-                drawCloud(((cx % 1.05) - 0.02) * canvas.width, cy * canvas.height, cs * baseScale);
+            for (const [bx, by, bs] of bubbleDefs) {
+                drawBubble(((bx % 1.05) - 0.02) * canvas.width, by * canvas.height, bs * baseScale);
             }
 
-            // Back hills (lighter green)
-            ctx.fillStyle = '#5ab85a';
+            // Sandy seabed
+            const sandGrad = ctx.createLinearGradient(0, canvas.height * 0.82, 0, canvas.height);
+            sandGrad.addColorStop(0, '#7a6030');
+            sandGrad.addColorStop(1, '#a08040');
+            ctx.fillStyle = sandGrad;
             ctx.beginPath();
             ctx.moveTo(0, canvas.height);
-            ctx.quadraticCurveTo(canvas.width * 0.25, canvas.height * 0.72, canvas.width * 0.5, canvas.height * 0.80);
-            ctx.quadraticCurveTo(canvas.width * 0.75, canvas.height * 0.88, canvas.width, canvas.height * 0.75);
+            ctx.quadraticCurveTo(canvas.width * 0.22, canvas.height * 0.88, canvas.width * 0.48, canvas.height * 0.92);
+            ctx.quadraticCurveTo(canvas.width * 0.72, canvas.height * 0.87, canvas.width, canvas.height * 0.90);
             ctx.lineTo(canvas.width, canvas.height);
             ctx.closePath();
             ctx.fill();
 
-            // Front hills (darker green)
-            ctx.fillStyle = '#3ea03e';
-            ctx.beginPath();
-            ctx.moveTo(0, canvas.height);
-            ctx.quadraticCurveTo(canvas.width * 0.18, canvas.height * 0.82, canvas.width * 0.38, canvas.height * 0.88);
-            ctx.quadraticCurveTo(canvas.width * 0.58, canvas.height * 0.93, canvas.width * 0.78, canvas.height * 0.86);
-            ctx.quadraticCurveTo(canvas.width * 0.90, canvas.height * 0.82, canvas.width, canvas.height * 0.87);
-            ctx.lineTo(canvas.width, canvas.height);
-            ctx.closePath();
-            ctx.fill();
+            // Coral clusters along the seabed
+            drawCoral(canvas.width * 0.08, canvas.height * 0.92, 28 * baseScale, '#e8501e');
+            drawCoral(canvas.width * 0.25, canvas.height * 0.90, 22 * baseScale, '#c8e030');
+            drawCoral(canvas.width * 0.52, canvas.height * 0.94, 30 * baseScale, '#f060a0');
+            drawCoral(canvas.width * 0.72, canvas.height * 0.90, 24 * baseScale, '#30d0b0');
+            drawCoral(canvas.width * 0.90, canvas.height * 0.92, 20 * baseScale, '#e07020');
 
-            // Pigs (food)
+            // Small fish (food)
             for (const f of foods) {
                 ctx.save();
                 ctx.translate(f.x, f.y);
-                const s = f.size + Math.sin(f.pulse) * 1.5 * baseScale;
+                ctx.scale(f.facing, 1);
+                const s = f.size + Math.sin(f.pulse) * 1.0 * baseScale;
 
                 ctx.shadowBlur = 10 * baseScale;
                 ctx.shadowColor = "rgba(0,0,0,0.22)";
 
+                // Tail fin
+                ctx.fillStyle = f.tailColor;
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.85, 0);
+                ctx.lineTo(-s * 1.45, -s * 0.65);
+                ctx.lineTo(-s * 1.22, 0);
+                ctx.lineTo(-s * 1.45, s * 0.65);
+                ctx.closePath();
+                ctx.fill();
+
                 // Body
-                ctx.fillStyle = '#5cb85c';
+                ctx.fillStyle = f.color;
                 ctx.beginPath();
-                ctx.arc(0, 0, s, 0, Math.PI * 2);
+                ctx.ellipse(0, 0, s, s * 0.62, 0, 0, Math.PI * 2);
                 ctx.fill();
+
                 // Highlight
-                ctx.fillStyle = '#80d080';
+                ctx.fillStyle = f.highlightColor;
                 ctx.beginPath();
-                ctx.arc(-s * 0.2, -s * 0.28, s * 0.5, 0, Math.PI * 2);
+                ctx.ellipse(-s * 0.15, -s * 0.22, s * 0.5, s * 0.22, -0.2, 0, Math.PI * 2);
                 ctx.fill();
-                // Ears
-                for (const ex of [-1, 1]) {
-                    ctx.fillStyle = '#4a9a4a';
-                    ctx.beginPath();
-                    ctx.arc(ex * s * 0.66, -s * 0.66, s * 0.3, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#f09090';
-                    ctx.beginPath();
-                    ctx.arc(ex * s * 0.66, -s * 0.66, s * 0.17, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                // Snout
-                ctx.fillStyle = '#a0d880';
+
+                // Eye
+                ctx.fillStyle = 'white';
                 ctx.beginPath();
-                ctx.ellipse(0, s * 0.22, s * 0.38, s * 0.27, 0, 0, Math.PI * 2);
+                ctx.arc(s * 0.48, -s * 0.18, s * 0.2, 0, Math.PI * 2);
                 ctx.fill();
-                // Nostrils
-                ctx.fillStyle = '#3a7a3a';
-                for (const nx of [-0.15, 0.15]) {
-                    ctx.beginPath();
-                    ctx.arc(nx * s, s * 0.24, s * 0.07, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                // Eyes
-                for (const [ewx, epx] of [[-0.3, -0.25], [0.3, 0.35]]) {
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(ewx * s, -s * 0.15, s * 0.2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#111';
-                    ctx.beginPath();
-                    ctx.arc(epx * s, -s * 0.15, s * 0.1, 0, Math.PI * 2);
-                    ctx.fill();
-                }
+                ctx.fillStyle = '#222';
+                ctx.beginPath();
+                ctx.arc(s * 0.52, -s * 0.18, s * 0.1, 0, Math.PI * 2);
+                ctx.fill();
 
                 ctx.restore();
             }
@@ -654,7 +710,7 @@
             }
             ctx.globalAlpha = 1.0;
 
-            drawBird(player.x, player.y, player.size, player.angle, player.chompLevel);
+            drawFish(player.x, player.y, player.size, player.angle, player.chompLevel);
         }
 
         window.addEventListener('resize', updateDimensions);
